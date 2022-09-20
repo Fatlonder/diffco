@@ -1,6 +1,6 @@
 from typing import List
 from collections import deque
-partials_node = {}
+import math
 
 class Node:
     weights: List[float]
@@ -8,13 +8,16 @@ class Node:
     backward_children: List['Node'] # If memory becomes an issue we will use only the above relation list for forward and backward. 
     linear_value: float
     normalized_value:float
-
     partial_values: List[float]
-    fn: lambda x: x
+    fn: lambda x: 1/(1+math.e**(-1*x))
+    gradient_fn: lambda x: x
+    lr: float
     node_type: float # 0 - Input node, 1 - Intermediate node, 2 - Terminal node. 
-    node_grad: float # partial of fn w.r.t children in backward phase. 
+    chain_accum_prod: float
+    chain_accum: List[float]
+    weight_index: float
 
-    def __init__(self, value: float = 0, node_type:float = 1, children: List[any] = []): # Type of children is ComputingNode
+    def __init__(self, value: float = 0, node_type:float = 1, children: List[any] = [], lr: float = 0.001):
         self.children = children
         self.node_type = node_type
         self.weights = []
@@ -22,16 +25,35 @@ class Node:
         self.partial_values = []
         self._random_weight()
         self.linear_value = value
-        self.fn = lambda x: x**2
-        self.normalized_value = value if self.node_type == 0 else self.fn(value) # Why now?
+        self.fn = lambda x: 1/(1+math.e**(-1*x))
+        self.gradient_fn = lambda x: self.fn(x) * (1 - self.fn(x)) 
+        self.normalized_value = value
+        self.lr = lr
+        self.chain_accum_prod = 0
+        self.chain_accum = []
+        self.weight_index = 0
 
     def _random_weight(self):
         if self.children is not None:
-            for i in range(len(self.children)): self.weights.append(1) 
+            for i in range(len(self.children)): self.weights.append(1) # Make it at least pseudo-random
 
-    def backprop(self):
-        # TODO
-        print(self)
+    def backward(self):
+        node_queue = deque([self]+ self.backward_children)
+        while len(node_queue)>0:
+            current = node_queue.popleft()
+            current.chain_accum_prod = 1
+            current.current_weight_index = 0
+            if current.node_type != 2:
+                current.chain_accum_prod = sum(current.chain_accum)
+            for child in current.backward_children:
+                i = child.weight_index
+                accumulated_gradients = current.chain_accum_prod * current.gradient_fn(current.linear_value)
+                child.chain_accum.append(accumulated_gradients * child.weights[i])
+                delta_w = accumulated_gradients * child.normalized_value
+                child.weights[i] = child.weights[i] - current.lr*delta_w
+                child.weight_index +=1
+                if node_queue.count(child) == 0: node_queue.append(child) 
+
 
     @staticmethod
     def forward(input: List['Node']):
@@ -44,6 +66,6 @@ class Node:
             j = 0
             for child in parent.children:
                 child.backward_children.append(parent)
-                child.partial_values.append(parent.normalized_value*parent.weights[j]) # For terminal nodes we don't multiply by the weight. 
+                child.partial_values.append(parent.normalized_value*parent.weights[j])
                 if node_queue.count(child) == 0: node_queue.append(child) 
                 j+=1
