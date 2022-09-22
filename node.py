@@ -2,7 +2,7 @@ from typing import List
 from collections import deque
 import math
 
-class Node:
+class Node(object):
     weights: List[float]
     children: List['Node']
     backward_children: List['Node'] # If memory becomes an issue we will use only the above relation list for forward and backward. 
@@ -39,7 +39,7 @@ class Node:
 
     def backward(self):
         node_queue = deque([self]+ self.backward_children)
-        while len(node_queue)>0:
+        while len(node_queue)>0: # Run topological sort independently from gradient calculation/update to make the procedure explicit. 
             current = node_queue.popleft()
             current.chain_accum_prod = 1
             current.current_weight_index = 0
@@ -47,7 +47,7 @@ class Node:
                 current.chain_accum_prod = sum(current.chain_accum)
             for child in current.backward_children:
                 i = child.weight_index
-                accumulated_gradients = current.chain_accum_prod * current.gradient_fn(current.linear_value)
+                accumulated_gradients = current.chain_accum_prod * current.gradient_fn(current.linear_value) # Construct a table that maps functions to derivatives. 
                 child.chain_accum.append(accumulated_gradients * child.weights[i])
                 delta_w = accumulated_gradients * child.normalized_value
                 child.weights[i] = child.weights[i] - current.lr*delta_w
