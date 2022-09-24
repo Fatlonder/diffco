@@ -17,7 +17,7 @@ class Node(object):
     chain_accum: List[float]
     weight_index: float
 
-    def __init__(self, value: float = 0, node_type:float = 1, children: List[any] = [], lr: float = 0.001):
+    def __init__(self, value: float = 0, node_type:float = 1, children: List['Node'] = [], lr: float = 0.001):
         self.children = children
         self.node_type = node_type
         self.weights = []
