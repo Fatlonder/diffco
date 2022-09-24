@@ -1,6 +1,7 @@
 from typing import List
 from collections import deque
 import math
+from util import toposort
 
 class Node(object):
     weights: List[float]
@@ -38,11 +39,10 @@ class Node(object):
             for i in range(len(self.children)): self.weights.append(1) # Make it at least pseudo-random
 
     def backward(self):
-        node_queue = deque([self]+ self.backward_children)
-        while len(node_queue)>0: # Run topological sort independently from gradient calculation/update to make the procedure explicit. 
-            current = node_queue.popleft()
+        node_queue = toposort([self]+ self.backward_children)
+        for current in node_queue:
             current.chain_accum_prod = 1
-            current.current_weight_index = 0
+            current.weight_index = 0
             if current.node_type != 2:
                 current.chain_accum_prod = sum(current.chain_accum)
             for child in current.backward_children:
@@ -52,8 +52,6 @@ class Node(object):
                 delta_w = accumulated_gradients * child.normalized_value
                 child.weights[i] = child.weights[i] - current.lr*delta_w
                 child.weight_index +=1
-                if node_queue.count(child) == 0: node_queue.append(child) 
-
 
     @staticmethod
     def forward(input: List['Node']):

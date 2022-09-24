@@ -38,7 +38,6 @@ def backward_test_1():
     for t in layer_1+layer_2:
         print(t)
 
-
 if __name__ == "__main__":
     forward_test_1()
     backward_test_1()
