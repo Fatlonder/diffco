@@ -1,5 +1,4 @@
 from typing import List
-from collections import deque
 import math
 from util import toposort
 
@@ -39,7 +38,7 @@ class Node(object):
             for i in range(len(self.children)): self.weights.append(1) # Make it at least pseudo-random
 
     def backward(self):
-        node_queue = toposort([self]+ self.backward_children)
+        node_queue = toposort([self]+ self.backward_children, type='backward')
         for current in node_queue:
             current.chain_accum_prod = 1
             current.weight_index = 0
@@ -55,9 +54,8 @@ class Node(object):
 
     @staticmethod
     def forward(input: List['Node']):
-        node_queue = deque(input)
-        while len(node_queue)>0:
-            parent = node_queue.popleft()
+        node_queue = toposort(input)
+        for parent in node_queue:
             if parent.node_type != 0:
                 parent.linear_value = sum(parent.partial_values)
                 parent.normalized_value = parent.fn(parent.linear_value)
@@ -65,5 +63,4 @@ class Node(object):
             for child in parent.children:
                 child.backward_children.append(parent)
                 child.partial_values.append(parent.normalized_value*parent.weights[j])
-                if node_queue.count(child) == 0: node_queue.append(child) 
                 j+=1
